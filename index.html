@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Affairs Input</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            margin: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px 0;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enter Info to Get Results</h1>
+        <form id="inputForm">
+            <input type="text" id="inputField" placeholder="Enter ID (e.g., FBI123)">
+            <button type="submit">Submit</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <!-- Google API Script -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script>
+        // Function to initialize and load Google Sheets API
+        function fetchData() {
+            gapi.client.init({
+                apiKey: 'AIzaSyAqzOXUfZaUrZMXmPLiVZKB5ATRuKBhZPg', // Replace with your API key
+                clientId: '279926527224-2nr574bcnpdpeotvbob0k3vm7q805nj6.apps.googleusercontent.com', // Replace with your client ID
+                scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+            }).then(function() {
+                // Define the sheets and their ranges
+                const sheets = [
+                    { name: 'FBI', range: 'A1:Z1000' },  // Sheet1: FBI, range A to Z
+                    { name: 'HIA', range: 'A1:Z1000' },  // Sheet2: HIA, range A to Z
+                    { name: 'INT', range: 'A1:Z1000' },  // Sheet3: INT, range A to Z
+                    { name: 'UN', range: 'A1:E1000' },   // Sheet4: UN, range A to E
+                    { name: 'MoM', range: 'A1:Z1000' }   // Sheet5: MoM, range A to Z
+                ];
+
+                // Create an array of promises for each sheet's data
+                const requests = sheets.map(sheet => {
+                    return gapi.client.request({
+                        path: `https://sheets.googleapis.com/v4/spreadsheets/1K4Zg5UQ3cHCd1MU-9UQl3kryGs_nvRgAOy2rAhSS4p0/values/${sheet.name}!${sheet.range}`,
+                    });
+                });
+
+                // Fetch data for all sheets
+                Promise.all(requests).then(function(responses) {
+                    const allData = responses.map(response => response.result.values);
+                    console.log(allData); // Log all the data from all sheets
+                    processInput(allData); // Process the data based on user input
+                }).catch(function(error) {
+                    console.error('Error fetching data: ', error);
+                });
+            });
+        }
+
+        // Function to process user input and search across all sheets
+        function processInput(allData) {
+            // Listen for the form submission to get user input
+            document.getElementById('inputForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const input = document.getElementById('inputField').value; // Get user input
+
+                let found = false;
+
+                // Loop through all sheets' data and search for the input
+                allData.forEach((sheetData, index) => {
+                    const sheetName = ['FBI', 'HIA', 'INT', 'UN', 'MoM'][index]; // Get the name of the sheet
+                    const result = sheetData.find(row => row[0] === input); // Assuming ID is in the first column
+
+                    if (result) {
+                        const name = result[1]; // Assuming 'Name' is in column 2
+                        const details = result.slice(1).join(', '); // Join additional columns if needed
+                        document.getElementById('result').innerText = `Found in Sheet: ${sheetName}\nName: ${name}\nDetails: ${details}`;
+                        found = true;
+                    }
+                });
+
+                if (!found) {
+                    document.getElementById('result').innerText = 'No data found for this ID.';
+                }
+            });
+        }
+
+        // Load the Google API Client
+        gapi.load('client', fetchData);
+    </script>
+</body>
+</html>
