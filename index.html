@@ -25,9 +25,9 @@
 </head>
 <body>
     <div class="container">
-        <h1>Enter Info to Get Results</h1>
+        <h1>Enter Division Name</h1>
         <form id="inputForm">
-            <input type="text" id="inputField" placeholder="Enter ID (e.g., FBI123)">
+            <input type="text" id="inputField" placeholder="Enter Division Name (e.g., FBI)">
             <button type="submit">Submit</button>
         </form>
         <div id="result"></div>
@@ -43,57 +43,43 @@
                 clientId: '279926527224-2nr574bcnpdpeotvbob0k3vm7q805nj6.apps.googleusercontent.com', // Replace with your client ID
                 scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
             }).then(function() {
-                // Define the sheets and their ranges
-                const sheets = [
-                    { name: 'FBI', range: 'A1:Z1000' },  // Sheet1: FBI, range A to Z
-                    { name: 'HIA', range: 'A1:Z1000' },  // Sheet2: HIA, range A to Z
-                    { name: 'INT', range: 'A1:Z1000' },  // Sheet3: INT, range A to Z
-                    { name: 'UN', range: 'A1:E1000' },   // Sheet4: UN, range A to E
-                    { name: 'MoM', range: 'A1:Z1000' }   // Sheet5: MoM, range A to Z
-                ];
+                // Define the sheet and range
+                const sheetName = '[IA] Transfer Conversion Sheet'; // Replace with your sheet name
+                const range = 'A1:D1000'; // Adjust this range if needed (from column A to D)
 
-                // Create an array of promises for each sheet's data
-                const requests = sheets.map(sheet => {
-                    return gapi.client.request({
-                        path: `https://sheets.googleapis.com/v4/spreadsheets/1K4Zg5UQ3cHCd1MU-9UQl3kryGs_nvRgAOy2rAhSS4p0/values/${sheet.name}!${sheet.range}`,
-                    });
-                });
-
-                // Fetch data for all sheets
-                Promise.all(requests).then(function(responses) {
-                    const allData = responses.map(response => response.result.values);
-                    console.log(allData); // Log all the data from all sheets
-                    processInput(allData); // Process the data based on user input
+                // Fetch the data from Google Sheets
+                gapi.client.request({
+                    path: `https://sheets.googleapis.com/v4/spreadsheets/1K4Zg5UQ3cHCd1MU-9UQl3kryGs_nvRgAOy2rAhSS4p0/values/${sheetName}!${range}`,
+                }).then(function(response) {
+                    const allData = response.result.values; // Get all the data from the sheet
+                    processInput(allData); // Process the input based on the data
                 }).catch(function(error) {
                     console.error('Error fetching data: ', error);
                 });
             });
         }
 
-        // Function to process user input and search across all sheets
         function processInput(allData) {
             // Listen for the form submission to get user input
             document.getElementById('inputForm').addEventListener('submit', function(event) {
                 event.preventDefault();
-                const input = document.getElementById('inputField').value; // Get user input
+                const input = document.getElementById('inputField').value.trim(); // Get user input
 
                 let found = false;
 
-                // Loop through all sheets' data and search for the input
-                allData.forEach((sheetData, index) => {
-                    const sheetName = ['FBI', 'HIA', 'INT', 'UN', 'MoM'][index]; // Get the name of the sheet
-                    const result = sheetData.find(row => row[0] === input); // Assuming ID is in the first column
-
-                    if (result) {
-                        const name = result[1]; // Assuming 'Name' is in column 2
-                        const details = result.slice(1).join(', '); // Join additional columns if needed
-                        document.getElementById('result').innerText = `Found in Sheet: ${sheetName}\nName: ${name}\nDetails: ${details}`;
+                // Loop through all data and search for the division name in Column B
+                allData.forEach((row) => {
+                    if (row[1] && row[1].toLowerCase() === input.toLowerCase()) {
+                        // If division name matches, display the corresponding data from column C and D
+                        const divisionInSS = row[2]; // Column C - Division in SS
+                        const rank = row[3]; // Column D - Rank
+                        document.getElementById('result').innerText = `Division in SS: ${divisionInSS}\nRank: ${rank}`;
                         found = true;
                     }
                 });
 
                 if (!found) {
-                    document.getElementById('result').innerText = 'No data found for this ID.';
+                    document.getElementById('result').innerText = 'No matching division found.';
                 }
             });
         }
